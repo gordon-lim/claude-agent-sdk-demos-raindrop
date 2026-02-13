@@ -1,14 +1,26 @@
 import type { WebSocket } from "ws";
 
+// User stored in database
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // WebSocket client with session data
 export interface WSClient extends WebSocket {
   sessionId?: string;
+  userId?: string;
+  isAuthenticated?: boolean;
   isAlive?: boolean;
 }
 
-// Chat stored in memory
+// Chat stored in database
 export interface Chat {
   id: string;
+  userId: string;
   title: string;
   createdAt: string;
   updatedAt: string;
@@ -35,4 +47,18 @@ export interface WSSubscribeMessage {
   chatId: string;
 }
 
-export type IncomingWSMessage = WSChatMessage | WSSubscribeMessage;
+export interface WSAuthMessage {
+  type: "auth";
+  token: string;
+}
+
+export type IncomingWSMessage = WSChatMessage | WSSubscribeMessage | WSAuthMessage;
+
+// Extend Express Request type to include userId
+declare global {
+  namespace Express {
+    interface Request {
+      userId?: string;
+    }
+  }
+}

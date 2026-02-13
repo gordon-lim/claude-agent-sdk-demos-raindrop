@@ -1,4 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import type { ChatMessage } from "./types.js";
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant. You can help users with a wide variety of tasks including:
 - Answering questions
@@ -61,7 +62,18 @@ export class AgentSession {
   private queue = new MessageQueue();
   private outputIterator: AsyncIterator<any> | null = null;
 
-  constructor() {
+  constructor(conversationHistory: ChatMessage[] = []) {
+    // Build system prompt with conversation history if available
+    let systemPrompt = SYSTEM_PROMPT;
+
+    if (conversationHistory.length > 0) {
+      systemPrompt += `\n\n## Previous Conversation Context\n\nThis chat has previous history. Here are the messages so far:\n\n`;
+      for (const msg of conversationHistory) {
+        systemPrompt += `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}\n\n`;
+      }
+      systemPrompt += `Continue the conversation naturally from this point. You have full context of the previous discussion.`;
+    }
+
     // Start the query immediately with the queue as input
     // Cast to any - SDK accepts simpler message format at runtime
     this.outputIterator = query({
@@ -79,7 +91,7 @@ export class AgentSession {
           "WebSearch",
           "WebFetch",
         ],
-        systemPrompt: SYSTEM_PROMPT,
+        systemPrompt,
       },
     })[Symbol.asyncIterator]();
   }

@@ -1,6 +1,6 @@
 import type { WSClient } from "./types.js";
 import { AgentSession } from "./ai-client.js";
-import { chatStore } from "./chat-store.js";
+import { chatStore } from "./db-chat-store.js";
 
 // Session manages a single chat conversation with a long-lived agent
 export class Session {
@@ -11,7 +11,12 @@ export class Session {
 
   constructor(chatId: string) {
     this.chatId = chatId;
-    this.agentSession = new AgentSession();
+
+    // Create agent session with conversation history for context
+    const messages = chatStore.getMessages(this.chatId);
+    this.agentSession = new AgentSession(messages);
+
+    console.log(`Created session for chat ${this.chatId} with ${messages.length} previous messages`);
   }
 
   // Start listening to agent output (call once)
