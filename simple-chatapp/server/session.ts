@@ -11,6 +11,7 @@ export class Session {
 
   constructor(chatId: string, userId: string) {
     this.chatId = chatId;
+    console.log('[DEBUG] Session constructor', { chatId, userId });
 
     // Create agent session with conversation history for context
     const messages = chatStore.getMessages(this.chatId);
@@ -23,13 +24,17 @@ export class Session {
   private async startListening() {
     if (this.isListening) return;
     this.isListening = true;
+    console.log('[DEBUG] Starting to listen for messages');
 
     try {
       for await (const message of this.agentSession.getOutputStream()) {
+        console.log('[DEBUG] Received message from SDK:', message.type, JSON.stringify(message).substring(0, 200));
         this.handleSDKMessage(message);
       }
+      console.log('[DEBUG] Stream completed - no more messages');
     } catch (error) {
-      console.error(`Error in session ${this.chatId}:`, error);
+      console.error(`[DEBUG] Error in session ${this.chatId}:`, error);
+      console.error(`[DEBUG] Error stack:`, (error as Error).stack);
       this.broadcastError((error as Error).message);
     }
   }
@@ -55,6 +60,28 @@ export class Session {
     // Start listening if not already
     if (!this.isListening) {
       this.startListening();
+    }
+  }
+
+  // Interrupt the current query
+  async interrupt() {
+    console.log(`[SESSION] interrupt() called for chat ${this.chatId}`);
+    console.log(`[SESSION] isListening: ${this.isListening}, hasSubscribers: ${this.hasSubscribers()}`);
+    try {
+      console.log(`[SESSION] Calling agentSession.interrupt() for chat ${this.chatId}`);
+      await this.agentSession.interrupt();
+      console.log(`[SESSION] agentSession.interrupt() returned successfully for chat ${this.chatId}`);
+
+      this.broadcast({
+        type: "interrupted",
+        chatId: this.chatId,
+        message: "Query interrupted by user"
+      });
+      console.log(`[SESSION] Broadcasted interrupted message for chat ${this.chatId}`);
+    } catch (error) {
+      console.error(`[SESSION] interrupt() error for chat ${this.chatId}:`, error);
+      console.error(`[SESSION] Error stack:`, (error as Error).stack);
+      this.broadcastError(`Failed to interrupt: ${(error as Error).message}`);
     }
   }
 

@@ -52,7 +52,12 @@ export interface WSAuthMessage {
   token: string;
 }
 
-export type IncomingWSMessage = WSChatMessage | WSSubscribeMessage | WSAuthMessage;
+export interface WSInterruptMessage {
+  type: "interrupt";
+  chatId: string;
+}
+
+export type IncomingWSMessage = WSChatMessage | WSSubscribeMessage | WSAuthMessage | WSInterruptMessage;
 
 // Extend Express Request type to include userId
 declare global {

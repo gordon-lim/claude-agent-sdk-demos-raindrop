@@ -15,6 +15,7 @@ interface ChatWindowProps {
   isConnected: boolean;
   isLoading: boolean;
   onSendMessage: (content: string) => void;
+  onInterrupt: () => void;
 }
 
 function ToolUseBlock({ message }: { message: Message }) {
@@ -94,6 +95,7 @@ export function ChatWindow({
   isConnected,
   isLoading,
   onSendMessage,
+  onInterrupt,
 }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -107,6 +109,16 @@ export function ChatWindow({
     if (!input.trim() || !chatId || isLoading || !isConnected) return;
     onSendMessage(input.trim());
     setInput("");
+  };
+
+  const handleInterrupt = () => {
+    console.log('[FRONTEND] Stop button clicked', { chatId, isLoading });
+    if (chatId && isLoading) {
+      console.log('[FRONTEND] Calling onInterrupt for chatId:', chatId);
+      onInterrupt();
+    } else {
+      console.log('[FRONTEND] Not calling interrupt - conditions not met');
+    }
   };
 
   if (!chatId) {
@@ -171,13 +183,23 @@ export function ChatWindow({
             disabled={!isConnected || isLoading}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
           />
-          <button
-            type="submit"
-            disabled={!input.trim() || !isConnected || isLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Send
-          </button>
+          {isLoading ? (
+            <button
+              type="button"
+              onClick={handleInterrupt}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Stop
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!input.trim() || !isConnected}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Send
+            </button>
+          )}
         </form>
       </div>
     </div>

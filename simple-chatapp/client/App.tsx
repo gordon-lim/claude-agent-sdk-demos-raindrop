@@ -125,6 +125,21 @@ export default function App() {
         fetchChats();
         break;
 
+      case "interrupted":
+        console.log("[FRONTEND] Received interrupted message:", message.message);
+        setIsLoading(false);
+        // Optionally add a system message to show the query was stopped
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: "⚠️ Query interrupted by user",
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+        break;
+
       case "error":
         console.error("Server error:", message.error);
         setIsLoading(false);
@@ -225,6 +240,30 @@ export default function App() {
     });
   };
 
+  // Interrupt current query
+  const handleInterrupt = () => {
+    console.log('[FRONTEND] handleInterrupt called', {
+      selectedChatId,
+      isConnected,
+      wsAuthenticated
+    });
+
+    if (!selectedChatId || !isConnected || !wsAuthenticated) {
+      console.log('[FRONTEND] Not sending interrupt - conditions not met');
+      return;
+    }
+
+    console.log("[FRONTEND] Sending interrupt message via WebSocket for chat:", selectedChatId);
+
+    // Send interrupt message via WebSocket
+    sendJsonMessage({
+      type: "interrupt",
+      chatId: selectedChatId,
+    });
+
+    console.log('[FRONTEND] Interrupt message sent');
+  };
+
   // Clear state when user changes
   useEffect(() => {
     setChats([]);
@@ -277,6 +316,7 @@ export default function App() {
         isConnected={isConnected && wsAuthenticated}
         isLoading={isLoading}
         onSendMessage={handleSendMessage}
+        onInterrupt={handleInterrupt}
       />
 
       {/* User menu */}

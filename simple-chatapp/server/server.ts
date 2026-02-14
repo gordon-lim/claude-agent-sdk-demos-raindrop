@@ -238,6 +238,34 @@ wss.on("connection", (ws: WSClient) => {
           break;
         }
 
+        case "interrupt": {
+          console.log(`[SERVER] Received interrupt message for chat ${message.chatId} from user ${ws.userId}`);
+
+          // Verify the chat belongs to the user
+          const chat = chatStore.getChat(message.chatId, ws.userId);
+          if (!chat) {
+            console.log(`[SERVER] Chat ${message.chatId} not found or access denied for user ${ws.userId}`);
+            ws.send(JSON.stringify({ type: "error", error: "Chat not found or access denied" }));
+            break;
+          }
+
+          const session = sessions.get(message.chatId);
+          if (!session) {
+            console.log(`[SERVER] No active session found for chat ${message.chatId}`);
+            ws.send(JSON.stringify({ type: "error", error: "No active session for this chat" }));
+            break;
+          }
+
+          console.log(`[SERVER] Calling session.interrupt() for chat ${message.chatId}`);
+          session.interrupt().then(() => {
+            console.log(`[SERVER] session.interrupt() completed successfully for chat ${message.chatId}`);
+          }).catch(error => {
+            console.error(`[SERVER] session.interrupt() failed for chat ${message.chatId}:`, error);
+            console.error(`[SERVER] Error stack:`, error.stack);
+          });
+          break;
+        }
+
         default:
           console.warn("Unknown message type:", (message as any).type);
       }

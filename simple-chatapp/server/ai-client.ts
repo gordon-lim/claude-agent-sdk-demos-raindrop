@@ -60,6 +60,7 @@ class MessageQueue {
 
 export class AgentSession {
   private queue = new MessageQueue();
+  private queryInstance: any = null;
   private outputIterator: AsyncIterator<any> | null = null;
 
   constructor(
@@ -109,14 +110,52 @@ export class AgentSession {
         })
       : undefined;
 
-    this.outputIterator = metadata
-      ? query(queryArgs, metadata)[Symbol.asyncIterator]()
-      : query(queryArgs)[Symbol.asyncIterator]();
+    console.log('[DEBUG] AgentSession created with metadata:', {
+      userId: this.userId,
+      chatId: this.chatId,
+      hasMetadata: !!metadata,
+      metadata: metadata,
+      hasRaindropKey: !!process.env.RAINDROP_WRITE_KEY
+    });
+
+    // Store the Query instance so we can call interrupt() on it
+    this.queryInstance = metadata
+      ? query(queryArgs, metadata)
+      : query(queryArgs);
+
+    this.outputIterator = this.queryInstance[Symbol.asyncIterator]();
   }
 
   // Send a message to the agent
   sendMessage(content: string) {
+    console.log('[DEBUG] AgentSession.sendMessage called with:', content.substring(0, 50));
     this.queue.push(content);
+  }
+
+  // Interrupt the current query execution
+  async interrupt() {
+    console.log('[AGENT] interrupt() called');
+    console.log('[AGENT] queryInstance exists:', !!this.queryInstance);
+    console.log('[AGENT] queryInstance type:', typeof this.queryInstance);
+    console.log('[AGENT] queryInstance has interrupt method:', this.queryInstance && typeof this.queryInstance.interrupt === 'function');
+
+    if (!this.queryInstance) {
+      console.error('[AGENT] No queryInstance - throwing error');
+      throw new Error("Session not initialized");
+    }
+
+    console.log('[AGENT] Calling queryInstance.interrupt()...');
+    try {
+      const result = await this.queryInstance.interrupt();
+      console.log('[AGENT] queryInstance.interrupt() returned:', result);
+      console.log('[AGENT] interrupt completed successfully');
+    } catch (error) {
+      console.error('[AGENT] queryInstance.interrupt() threw error:', error);
+      console.error('[AGENT] Error type:', error?.constructor?.name);
+      console.error('[AGENT] Error message:', (error as Error)?.message);
+      console.error('[AGENT] Error stack:', (error as Error)?.stack);
+      throw error;
+    }
   }
 
   // Get the output stream
