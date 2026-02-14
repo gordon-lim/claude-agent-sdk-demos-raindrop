@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 import type { WSClient, IncomingWSMessage } from "./types.js";
 import { chatStore } from "./db-chat-store.js";
 import { Session } from "./session.js";
+import { raindropClient } from "./raindrop.js";
 import { runMigrations } from "./run-migrations.js";
 import { createUser, authenticateUser, getUserById, verifyToken } from "./auth.js";
 import { requireAuth } from "./middleware/auth.js";
@@ -102,10 +103,10 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
 // Session management
 const sessions: Map<string, Session> = new Map();
 
-function getOrCreateSession(chatId: string): Session {
+function getOrCreateSession(chatId: string, userId: string): Session {
   let session = sessions.get(chatId);
   if (!session) {
-    session = new Session(chatId);
+    session = new Session(chatId, userId);
     sessions.set(chatId, session);
   }
   return session;
@@ -209,7 +210,7 @@ wss.on("connection", (ws: WSClient) => {
             break;
           }
 
-          const session = getOrCreateSession(message.chatId);
+          const session = getOrCreateSession(message.chatId, ws.userId);
           session.subscribe(ws);
           console.log(`Client subscribed to chat ${message.chatId}`);
 
@@ -231,7 +232,7 @@ wss.on("connection", (ws: WSClient) => {
             break;
           }
 
-          const session = getOrCreateSession(message.chatId);
+          const session = getOrCreateSession(message.chatId, ws.userId);
           session.subscribe(ws);
           session.sendMessage(message.content);
           break;
@@ -276,4 +277,12 @@ server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
   console.log(`WebSocket endpoint available at ws://localhost:${PORT}/ws`);
   console.log(`Visit http://localhost:${PORT} to view the chat interface`);
+});
+
+// Graceful shutdown: flush Raindrop before exit
+process.on("SIGTERM", async () => {
+  if (raindropClient) {
+    await raindropClient.shutdown();
+  }
+  process.exit(0);
 });

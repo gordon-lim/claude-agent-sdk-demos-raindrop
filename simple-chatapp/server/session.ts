@@ -9,12 +9,12 @@ export class Session {
   private agentSession: AgentSession;
   private isListening = false;
 
-  constructor(chatId: string) {
+  constructor(chatId: string, userId: string) {
     this.chatId = chatId;
 
     // Create agent session with conversation history for context
     const messages = chatStore.getMessages(this.chatId);
-    this.agentSession = new AgentSession(messages);
+    this.agentSession = new AgentSession(messages, userId, chatId);
 
     console.log(`Created session for chat ${this.chatId} with ${messages.length} previous messages`);
   }

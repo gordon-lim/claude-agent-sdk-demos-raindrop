@@ -1,4 +1,4 @@
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query, eventMetadata } from "./raindrop.js";
 import type { ChatMessage } from "./types.js";
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant. You can help users with a wide variety of tasks including:
@@ -62,7 +62,11 @@ export class AgentSession {
   private queue = new MessageQueue();
   private outputIterator: AsyncIterator<any> | null = null;
 
-  constructor(conversationHistory: ChatMessage[] = []) {
+  constructor(
+    conversationHistory: ChatMessage[] = [],
+    private readonly userId?: string,
+    private readonly chatId?: string
+  ) {
     // Build system prompt with conversation history if available
     let systemPrompt = SYSTEM_PROMPT;
 
@@ -76,24 +80,38 @@ export class AgentSession {
 
     // Start the query immediately with the queue as input
     // Cast to any - SDK accepts simpler message format at runtime
-    this.outputIterator = query({
+    const options: Record<string, unknown> = {
+      maxTurns: 100,
+      model: "opus",
+      allowedTools: [
+        "Bash",
+        "Read",
+        "Write",
+        "Edit",
+        "Glob",
+        "Grep",
+        "WebSearch",
+        "WebFetch",
+      ],
+      systemPrompt,
+    };
+
+    const queryArgs = {
       prompt: this.queue as any,
-      options: {
-        maxTurns: 100,
-        model: "opus",
-        allowedTools: [
-          "Bash",
-          "Read",
-          "Write",
-          "Edit",
-          "Glob",
-          "Grep",
-          "WebSearch",
-          "WebFetch",
-        ],
-        systemPrompt,
-      },
-    })[Symbol.asyncIterator]();
+      options,
+    };
+
+    // Pass eventMetadata as second argument when using Raindrop-wrapped SDK
+    const metadata = (this.userId || this.chatId) && process.env.RAINDROP_WRITE_KEY
+      ? eventMetadata({
+          userId: this.userId,
+          convoId: this.chatId,
+        })
+      : undefined;
+
+    this.outputIterator = metadata
+      ? query(queryArgs, metadata)[Symbol.asyncIterator]()
+      : query(queryArgs)[Symbol.asyncIterator]();
   }
 
   // Send a message to the agent
