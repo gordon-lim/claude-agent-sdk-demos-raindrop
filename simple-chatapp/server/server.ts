@@ -103,10 +103,10 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
 // Session management
 const sessions: Map<string, Session> = new Map();
 
-function getOrCreateSession(chatId: string, userId: string): Session {
+function getOrCreateSession(chatId: string, userId: string, username: string): Session {
   let session = sessions.get(chatId);
   if (!session) {
-    session = new Session(chatId, userId);
+    session = new Session(chatId, userId, username);
     sessions.set(chatId, session);
   }
   return session;
@@ -189,6 +189,7 @@ wss.on("connection", (ws: WSClient) => {
         }
 
         ws.userId = payload.userId;
+        ws.username = payload.username;
         ws.isAuthenticated = true;
         console.log(`WebSocket client authenticated as user ${payload.userId}`);
         ws.send(JSON.stringify({ type: "authenticated", userId: payload.userId }));
@@ -210,7 +211,7 @@ wss.on("connection", (ws: WSClient) => {
             break;
           }
 
-          const session = getOrCreateSession(message.chatId, ws.userId);
+          const session = getOrCreateSession(message.chatId, ws.userId!, ws.username ?? ws.userId!);
           session.subscribe(ws);
           console.log(`Client subscribed to chat ${message.chatId}`);
 
@@ -232,7 +233,7 @@ wss.on("connection", (ws: WSClient) => {
             break;
           }
 
-          const session = getOrCreateSession(message.chatId, ws.userId);
+          const session = getOrCreateSession(message.chatId, ws.userId!, ws.username ?? ws.userId!);
           session.subscribe(ws);
           session.sendMessage(message.content);
           break;

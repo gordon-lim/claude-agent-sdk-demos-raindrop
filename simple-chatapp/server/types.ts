@@ -13,6 +13,7 @@ export interface User {
 export interface WSClient extends WebSocket {
   sessionId?: string;
   userId?: string;
+  username?: string;
   isAuthenticated?: boolean;
   isAlive?: boolean;
 }

@@ -65,8 +65,8 @@ export class AgentSession {
 
   constructor(
     conversationHistory: ChatMessage[] = [],
-    private readonly userId?: string,
-    private readonly chatId?: string
+    private readonly chatId?: string,
+    private readonly username?: string
   ) {
     // Build system prompt with conversation history if available
     let systemPrompt = SYSTEM_PROMPT;
@@ -103,15 +103,15 @@ export class AgentSession {
     };
 
     // Pass eventMetadata as second argument when using Raindrop-wrapped SDK
-    const metadata = (this.userId || this.chatId) && process.env.RAINDROP_WRITE_KEY
+    const metadata = (this.username || this.chatId) && process.env.RAINDROP_WRITE_KEY
       ? eventMetadata({
-          userId: this.userId,
+          userId: this.username,
           convoId: this.chatId,
         })
       : undefined;
 
     console.log('[DEBUG] AgentSession created with metadata:', {
-      userId: this.userId,
+      username: this.username,
       chatId: this.chatId,
       hasMetadata: !!metadata,
       metadata: metadata,
