@@ -12,10 +12,26 @@ interface Chat {
   updatedAt: string;
 }
 
+interface TextContent {
+  type: "text";
+  text: string;
+}
+
+interface ImageContent {
+  type: "image";
+  source: {
+    type: "base64";
+    media_type: string;
+    data: string;
+  };
+}
+
+type MessageContent = string | Array<TextContent | ImageContent>;
+
 interface Message {
   id: string;
   role: "user" | "assistant" | "tool_use";
-  content: string;
+  content: MessageContent;
   timestamp: string;
   toolName?: string;
   toolInput?: Record<string, any>;
@@ -216,7 +232,7 @@ export default function App() {
   };
 
   // Send a message
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = (content: MessageContent) => {
     if (!selectedChatId || !isConnected || !wsAuthenticated) return;
 
     // Add message optimistically

@@ -1,4 +1,4 @@
-import type { WSClient } from "./types.js";
+import type { WSClient, MessageContent } from "./types.js";
 import { AgentSession } from "./ai-client.js";
 import { chatStore } from "./db-chat-store.js";
 
@@ -40,7 +40,7 @@ export class Session {
   }
 
   // Send a user message to the agent
-  sendMessage(content: string) {
+  sendMessage(content: MessageContent) {
     // Store user message
     chatStore.addMessage(this.chatId, {
       role: "user",

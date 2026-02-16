@@ -27,19 +27,36 @@ export interface Chat {
   updatedAt: string;
 }
 
-// Message stored in memory
+// Message content types (Anthropic API format)
+export interface TextContent {
+  type: "text";
+  text: string;
+}
+
+export interface ImageContent {
+  type: "image";
+  source: {
+    type: "base64";
+    media_type: "image/png" | "image/jpeg" | "image/gif" | "image/webp";
+    data: string;
+  };
+}
+
+export type MessageContent = string | Array<TextContent | ImageContent>;
+
+// Message stored in database
 export interface ChatMessage {
   id: string;
   chatId: string;
   role: "user" | "assistant";
-  content: string;
+  content: MessageContent;
   timestamp: string;
 }
 
 // WebSocket incoming messages
 export interface WSChatMessage {
   type: "chat";
-  content: string;
+  content: MessageContent;
   chatId: string;
 }
 

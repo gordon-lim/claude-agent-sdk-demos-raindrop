@@ -1,5 +1,5 @@
 import { query, eventMetadata } from "./raindrop.js";
-import type { ChatMessage } from "./types.js";
+import type { ChatMessage, MessageContent } from "./types.js";
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant. You can help users with a wide variety of tasks including:
 - Answering questions
@@ -12,7 +12,7 @@ Be concise but thorough in your responses.`;
 
 type UserMessage = {
   type: "user";
-  message: { role: "user"; content: string };
+  message: { role: "user"; content: MessageContent };
 };
 
 // Simple async queue - messages go in via push(), come out via async iteration
@@ -21,7 +21,7 @@ class MessageQueue {
   private waiting: ((msg: UserMessage) => void) | null = null;
   private closed = false;
 
-  push(content: string) {
+  push(content: MessageContent) {
     const msg: UserMessage = {
       type: "user",
       message: {
@@ -74,7 +74,10 @@ export class AgentSession {
     if (conversationHistory.length > 0) {
       systemPrompt += `\n\n## Previous Conversation Context\n\nThis chat has previous history. Here are the messages so far:\n\n`;
       for (const msg of conversationHistory) {
-        systemPrompt += `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}\n\n`;
+        const contentText = typeof msg.content === "string"
+          ? msg.content
+          : msg.content.map(c => c.type === "text" ? c.text : "[Image]").join(" ");
+        systemPrompt += `${msg.role === "user" ? "User" : "Assistant"}: ${contentText}\n\n`;
       }
       systemPrompt += `Continue the conversation naturally from this point. You have full context of the previous discussion.`;
     }
@@ -83,7 +86,7 @@ export class AgentSession {
     // Cast to any - SDK accepts simpler message format at runtime
     const options: Record<string, unknown> = {
       maxTurns: 100,
-      model: "opus",
+      model: "sonnet",
       allowedTools: [
         "Bash",
         "Read",
@@ -127,8 +130,11 @@ export class AgentSession {
   }
 
   // Send a message to the agent
-  sendMessage(content: string) {
-    console.log('[DEBUG] AgentSession.sendMessage called with:', content.substring(0, 50));
+  sendMessage(content: MessageContent) {
+    const preview = typeof content === "string"
+      ? content.substring(0, 50)
+      : JSON.stringify(content).substring(0, 50);
+    console.log('[DEBUG] AgentSession.sendMessage called with:', preview);
     this.queue.push(content);
   }
 

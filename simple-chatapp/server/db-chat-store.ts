@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { db } from "./db";
-import type { Chat, ChatMessage } from "./types.js";
+import type { Chat, ChatMessage, MessageContent } from "./types.js";
 
 // Database-backed chat store with user scoping
 class DbChatStore {
@@ -94,15 +94,23 @@ class DbChatStore {
       ...message,
     };
 
+    // Determine if content should be stored as JSON
+    const isJsonContent = Array.isArray(message.content);
+    const contentToStore = isJsonContent
+      ? JSON.stringify(message.content)
+      : message.content;
+    const contentType = isJsonContent ? "json" : "text";
+
     // Insert message
     db.prepare(
-      `INSERT INTO messages (id, chat_id, role, content, timestamp)
-       VALUES (?, ?, ?, ?, ?)`
+      `INSERT INTO messages (id, chat_id, role, content, content_type, timestamp)
+       VALUES (?, ?, ?, ?, ?, ?)`
     ).run(
       newMessage.id,
       chatId,
       newMessage.role,
-      newMessage.content,
+      contentToStore,
+      contentType,
       newMessage.timestamp
     );
 
@@ -114,9 +122,12 @@ class DbChatStore {
 
     // Auto-generate title from first user message if still "New Chat"
     if (chat.title === "New Chat" && message.role === "user") {
+      const contentText = typeof message.content === "string"
+        ? message.content
+        : message.content.find(c => c.type === "text")?.text || "New Chat";
       const newTitle =
-        message.content.slice(0, 50) +
-        (message.content.length > 50 ? "..." : "");
+        contentText.slice(0, 50) +
+        (contentText.length > 50 ? "..." : "");
       db.prepare(`UPDATE chats SET title = ? WHERE id = ?`).run(newTitle, chatId);
     }
 
@@ -126,14 +137,28 @@ class DbChatStore {
   getMessages(chatId: string): ChatMessage[] {
     const rows = db
       .prepare(
-        `SELECT id, chat_id as chatId, role, content, timestamp
+        `SELECT id, chat_id as chatId, role, content, content_type as contentType, timestamp
          FROM messages
          WHERE chat_id = ?
          ORDER BY timestamp ASC`
       )
-      .all(chatId) as ChatMessage[];
+      .all(chatId) as Array<{
+        id: string;
+        chatId: string;
+        role: string;
+        content: string;
+        contentType?: string;
+        timestamp: string;
+      }>;
 
-    return rows;
+    // Parse JSON content back to objects
+    return rows.map(row => ({
+      id: row.id,
+      chatId: row.chatId,
+      role: row.role as "user" | "assistant",
+      content: row.contentType === "json" ? JSON.parse(row.content) : row.content,
+      timestamp: row.timestamp,
+    }));
   }
 }
 
